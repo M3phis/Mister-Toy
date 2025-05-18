@@ -1,35 +1,58 @@
-import { useState, useEffect, useCallback } from 'react'
-import { useDispatch } from 'react-redux'
+import { useState, useEffect, useCallback, memo } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
 import debounce from 'lodash/debounce'
 import { toyService } from '../services/toy.service'
-import { setFilter } from '../store/toy.slice'
+import { setFilter, loadToys } from '../store/toy.slice'
+import { selectFilterState } from '../store/toy.selectors'
 
-export function ToyFilter() {
+export const ToyFilter = memo(function ToyFilter() {
   const dispatch = useDispatch()
-  const [filterBy, setFilterBy] = useState({
-    txt: '',
-    inStock: undefined,
-    labels: [],
-    sortBy: '',
-  })
+  const currentFilter = useSelector(selectFilterState)
+  const [filterBy, setFilterBy] = useState(currentFilter)
 
-  const debouncedSetFilter = useCallback(
-    debounce((filter) => {
-      dispatch(setFilter(filter))
+  // Create stable debounced function for text search only
+  const debouncedTextSearch = useCallback(
+    debounce((txt) => {
+      dispatch(setFilter({ txt }))
+      dispatch(loadToys())
     }, 500),
+    []
+  )
+
+  // Immediate filter update for non-text filters
+  const updateFilter = useCallback(
+    (updates) => {
+      dispatch(setFilter(updates))
+      dispatch(loadToys())
+    },
     [dispatch]
   )
 
-  useEffect(() => {
-    debouncedSetFilter(filterBy)
-    return () => {
-      debouncedSetFilter.cancel()
-    }
-  }, [filterBy, debouncedSetFilter])
+  // Handle text search separately with debounce
+  const handleTextChange = useCallback(
+    (txt) => {
+      setFilterBy((prev) => ({ ...prev, txt }))
+      debouncedTextSearch(txt)
+    },
+    [debouncedTextSearch]
+  )
 
-  const handleChange = (field, value) => {
-    setFilterBy((prev) => ({ ...prev, [field]: value }))
-  }
+  // Handle all other filter changes immediately
+  const handleChange = useCallback(
+    (field, value) => {
+      const updates = { [field]: value }
+      setFilterBy((prev) => ({ ...prev, ...updates }))
+      updateFilter(updates)
+    },
+    [updateFilter]
+  )
+
+  // Cleanup debounce on unmount
+  useEffect(() => {
+    return () => {
+      debouncedTextSearch.cancel()
+    }
+  }, [debouncedTextSearch])
 
   return (
     <section className="toy-filter">
@@ -37,7 +60,7 @@ export function ToyFilter() {
         type="text"
         placeholder="Search toy name..."
         value={filterBy.txt}
-        onChange={(e) => handleChange('txt', e.target.value)}
+        onChange={(e) => handleTextChange(e.target.value)}
       />
 
       <select
@@ -84,4 +107,4 @@ export function ToyFilter() {
       </select>
     </section>
   )
-}
+})

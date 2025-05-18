@@ -1,6 +1,7 @@
+import { memo } from 'react'
 import { ToyPreview } from './ToyPreview'
 
-export function ToyList({ toys, onRemove }) {
+export const ToyList = memo(function ToyList({ toys, onRemove }) {
   if (!toys.length) return <div>No toys found</div>
 
   return (
@@ -10,4 +11,4 @@ export function ToyList({ toys, onRemove }) {
       ))}
     </section>
   )
-}
+})

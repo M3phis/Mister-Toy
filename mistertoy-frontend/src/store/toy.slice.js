@@ -50,8 +50,16 @@ const toySlice = createSlice({
     initialState,
     reducers: {
         setFilter: (state, action) => {
-            state.filterBy = { ...state.filterBy, ...action.payload }
+            const newFilter = { ...state.filterBy, ...action.payload }
+            if (JSON.stringify(newFilter) !== JSON.stringify(state.filterBy)) {
+                state.filterBy = newFilter
+            }
         },
+        setLoading: (state, action) => {
+            if (state.isLoading !== action.payload) {
+                state.isLoading = action.payload
+            }
+        }
     },
     extraReducers: (builder) => {
         builder
@@ -60,8 +68,14 @@ const toySlice = createSlice({
                 state.error = null
             })
             .addCase(loadToys.fulfilled, (state, action) => {
+                const newToys = action.payload
+                const currentToys = JSON.stringify(state.toys)
+                const incomingToys = JSON.stringify(newToys)
+
+                if (currentToys !== incomingToys) {
+                    state.toys = newToys
+                }
                 state.isLoading = false
-                state.toys = action.payload
             })
             .addCase(loadToys.rejected, (state, action) => {
                 state.isLoading = false
@@ -69,8 +83,13 @@ const toySlice = createSlice({
             })
             .addCase(saveToy.fulfilled, (state, action) => {
                 const idx = state.toys.findIndex(t => t._id === action.payload._id)
-                if (idx !== -1) state.toys[idx] = action.payload
-                else state.toys.push(action.payload)
+                if (idx !== -1) {
+                    if (JSON.stringify(state.toys[idx]) !== JSON.stringify(action.payload)) {
+                        state.toys[idx] = action.payload
+                    }
+                } else {
+                    state.toys.push(action.payload)
+                }
             })
             .addCase(removeToy.fulfilled, (state, action) => {
                 state.toys = state.toys.filter(t => t._id !== action.payload)
@@ -78,5 +97,5 @@ const toySlice = createSlice({
     }
 })
 
-export const { setFilter } = toySlice.actions
+export const { setFilter, setLoading } = toySlice.actions
 export default toySlice.reducer 
